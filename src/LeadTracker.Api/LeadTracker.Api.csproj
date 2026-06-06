@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>024d1b0b-5d9d-47d2-bc35-1ede3a378729</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!-- Validates the JWT issued by Supabase Auth. Pulls Microsoft.IdentityModel.* transitively. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LeadTracker.Core\LeadTracker.Core.csproj" />
+    <ProjectReference Include="..\LeadTracker.Infrastructure\LeadTracker.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
