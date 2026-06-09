@@ -1,0 +1,37 @@
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public int Value { get; set; }
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    [Parameter, EditorRequired] public string AccentColor { get; set; } = "";
+    [Parameter] public string? Delta { get; set; }
+    [Parameter] public string Sub { get; set; } = "";
+}
+
+<div class="stat-card" style="--accent-color:@AccentColor">
+    <div class="stat-top">
+        <span class="stat-label">@Label</span>
+        <span class="stat-ico" style="color:@AccentColor; background:color-mix(in srgb, @AccentColor 12%, transparent)">
+            @IconSvg(Icon, AccentColor)
+        </span>
+    </div>
+    <div class="stat-value">@Value</div>
+    <div class="stat-sub">
+        @if (!string.IsNullOrEmpty(Delta))
+        {
+            <span class="stat-delta">↑ @Delta</span>
+        }
+        @Sub
+    </div>
+</div>
+
+@code {
+    private static MarkupString IconSvg(string name, string color) =>
+        new MarkupString(name switch
+        {
+            "inbox"       => "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='22 12 16 12 14 15 10 15 8 12 2 12'/><path d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/></svg>",
+            "bar-chart"   => "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 3v18h18'/><path d='M18 17V9'/><path d='M13 17V5'/><path d='M8 17v-3'/></svg>",
+            "trending-up" => "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='22 7 13.5 15.5 8.5 10.5 2 17'/><polyline points='16 7 22 7 22 13'/></svg>",
+            "flame"       => "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'/></svg>",
+            _             => ""
+        });
+}

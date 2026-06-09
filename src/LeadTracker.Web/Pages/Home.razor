@@ -1,0 +1,127 @@
+@page "/"
+@inject MockDataService DataService
+
+<PageTitle>Flujo.ai — Leads</PageTitle>
+
+<header class="topbar">
+    <div>
+        <h1>Bandeja de Leads</h1>
+        <p class="subtitle">@_leadsHoy nuevos hoy · @_all.Count en total</p>
+    </div>
+    <div class="date-chip">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Hoy, @DateTime.Now.ToString("d 'de' MMMM", new System.Globalization.CultureInfo("es-UY"))
+    </div>
+</header>
+
+<div class="leads-view">
+    <div class="filters">
+        <div class="search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input placeholder="Buscar por nombre o consulta…" @bind="_query" @bind:event="oninput" />
+        </div>
+
+        <div class="seg">
+            @foreach (var (label, value) in new[] { ("Todos","todos"), ("Nuevos hoy","hoy"), ("Históricos","historicos") })
+            {
+                <button class="@(_filterTime == value ? "on" : "")" @onclick="() => _filterTime = value">@label</button>
+            }
+        </div>
+
+        <div class="pills">
+            @foreach (var (label, value, color) in new[] {
+                ("Todos",     "todos",     ""),
+                ("Caliente",  "caliente",  "#BB5048"),
+                ("Tibio",     "tibio",     "#B98631"),
+                ("Frío",      "frio",      "#5B86B0") })
+            {
+                <button class="pill @(_filterTemp == value ? $"on-{value}" : "")" @onclick="() => _filterTemp = value">
+                    @if (value != "todos")
+                    {
+                        <span class="pill-dot" style="background:@color"></span>
+                    }
+                    @label
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="lead-list">
+        @{
+            var filtered = GetFiltered();
+            var hoy   = filtered.Where(l => l.DaysAgo == 0).ToList();
+            var antes = filtered.Where(l => l.DaysAgo > 0).ToList();
+        }
+
+        @if (!filtered.Any())
+        {
+            <div class="empty">No hay leads que coincidan con el filtro.</div>
+        }
+        else if (_filterTime != "todos")
+        {
+            @foreach (var lead in filtered)
+            {
+                <LeadRow Lead="lead" OnClick="OpenChat" />
+            }
+        }
+        else
+        {
+            @if (hoy.Any())
+            {
+                <div class="group-head">Nuevos hoy <span>@hoy.Count</span></div>
+                @foreach (var lead in hoy)
+                {
+                    <LeadRow Lead="lead" OnClick="OpenChat" />
+                }
+            }
+            @if (antes.Any())
+            {
+                <div class="group-head">Anteriores <span>@antes.Count</span></div>
+                @foreach (var lead in antes)
+                {
+                    <LeadRow Lead="lead" OnClick="OpenChat" />
+                }
+            }
+        }
+    </div>
+</div>
+
+@if (_selected is not null)
+{
+    <ChatPanel Lead="_selected" OnClose="CloseChat" />
+}
+
+@code {
+    private List<Lead> _all = [];
+    private Lead? _selected;
+    private string _query = "";
+    private string _filterTime = "todos";
+    private string _filterTemp = "todos";
+
+    private int _leadsHoy;
+
+    protected override void OnInitialized()
+    {
+        _all = DataService.GetLeads();
+        _leadsHoy = _all.Count(l => l.DaysAgo == 0);
+    }
+
+    private List<Lead> GetFiltered()
+    {
+        return _all.Where(l =>
+        {
+            if (_filterTemp != "todos" && l.Temp.ToString().ToLower() != _filterTemp) return false;
+            if (_filterTime == "hoy" && l.DaysAgo != 0) return false;
+            if (_filterTime == "historicos" && l.DaysAgo == 0) return false;
+            if (!string.IsNullOrEmpty(_query))
+            {
+                var q = _query.ToLower();
+                if (!l.Name.ToLower().Contains(q) && !l.Intent.ToLower().Contains(q)) return false;
+            }
+            return true;
+        }).ToList();
+    }
+
+    private void OpenChat(Lead lead) => _selected = lead;
+    private void CloseChat() => _selected = null;
+}
