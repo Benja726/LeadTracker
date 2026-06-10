@@ -261,3 +261,56 @@ html, body, #app { height: 100%; }
     .stat-grid { grid-template-columns: repeat(2, 1fr); }
     .panels-2 { grid-template-columns: 1fr; }
 }
+
+/* -------- Login -------- */
+.login-wrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+}
+.login-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 40px 36px; width: 360px; display: flex; flex-direction: column; gap: 20px;
+}
+.login-logo { font-size: 22px; font-weight: 700; letter-spacing: -.5px; color: var(--text-p); }
+.login-logo span { color: var(--brand); }
+.login-sub { font-size: 13px; color: var(--text-m); margin-top: -12px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; }
+.login-field label { font-size: 12px; color: var(--text-s); font-weight: 500; }
+.login-field input {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+    padding: 9px 12px; font-size: 14px; color: var(--text-p); outline: none;
+    transition: border-color .15s; font-family: inherit;
+}
+.login-field input:focus { border-color: var(--brand); }
+.login-error {
+    font-size: 12px; color: var(--caliente); padding: 8px 10px;
+    background: rgba(187,80,72,.08); border-radius: 6px;
+}
+.login-btn {
+    background: var(--brand); color: #fff; border: none; border-radius: 8px;
+    padding: 11px 0; font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: opacity .15s;
+}
+.login-btn:disabled { opacity: .6; cursor: not-allowed; }
+.login-btn:hover:not(:disabled) { opacity: .9; }
+
+/* -------- Logout btn in sidebar -------- */
+.logout-btn {
+    display: flex; align-items: center; gap: 7px; background: none; border: none;
+    color: var(--text-m); font-size: 12px; cursor: pointer; padding: 6px 8px;
+    border-radius: 6px; font-family: inherit; transition: color .15s, background .15s;
+    width: 100%; margin-bottom: 8px;
+}
+.logout-btn:hover { color: var(--caliente); background: rgba(187,80,72,.06); }
+
+/* -------- Loading state -------- */
+.loading-wrap {
+    display: flex; align-items: center; justify-content: center;
+    height: 60vh;
+}
+.loading-spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--brand); border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

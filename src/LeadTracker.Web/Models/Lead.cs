@@ -5,7 +5,7 @@ public enum Temperatura { Frio, Tibio, Caliente }
 public record Message(string From, string Text, string Time);
 
 public record Lead(
-    int Id,
+    Guid Id,
     string Name,
     string Phone,
     Temperatura Temp,
