@@ -1,9 +1,11 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using LeadTracker.Api.Auth;
+using LeadTracker.Infrastructure.Data.Scaffolded;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +52,9 @@ builder.Services
             };
         }
     });
+
+builder.Services.AddDbContext<LeadTrackerDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Supabase")));
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
