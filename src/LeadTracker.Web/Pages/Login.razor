@@ -1,0 +1,62 @@
+@page "/login"
+@layout EmptyLayout
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-logo">Flujo<span>.ai</span></div>
+        <div class="login-sub">Iniciá sesión para continuar</div>
+
+        <div class="login-field">
+            <label>Email</label>
+            <input type="email" @bind="_email" placeholder="tu@email.com" />
+        </div>
+        <div class="login-field">
+            <label>Contraseña</label>
+            <input type="password" @bind="_password" @onkeydown="OnKeyDown" />
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="login-error">@_error</div>
+        }
+
+        <button class="login-btn" @onclick="LoginAsync" disabled="@_loading">
+            @(_loading ? "Entrando…" : "Iniciar sesión")
+        </button>
+    </div>
+</div>
+
+@code {
+    private string _email = "";
+    private string _password = "";
+    private string? _error;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await Auth.IsAuthenticatedAsync())
+            Nav.NavigateTo("/");
+    }
+
+    private async Task LoginAsync()
+    {
+        _error = null;
+        _loading = true;
+        StateHasChanged();
+
+        var ok = await Auth.SignInAsync(_email, _password);
+        _loading = false;
+
+        if (ok)
+            Nav.NavigateTo("/");
+        else
+            _error = "Email o contraseña incorrectos.";
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await LoginAsync();
+    }
+}
