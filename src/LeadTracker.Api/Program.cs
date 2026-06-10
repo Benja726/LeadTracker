@@ -18,6 +18,11 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Keep raw JWT claim names ("sub", "role") instead of remapping them to
+        // the long ClaimTypes.* URIs. The controllers and NameClaimType/RoleClaimType
+        // below all read the raw Supabase claim names.
+        options.MapInboundClaims = false;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
