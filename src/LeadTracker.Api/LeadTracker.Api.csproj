@@ -18,7 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LeadTracker.Core\LeadTracker.Core.csproj" />
     <ProjectReference Include="..\LeadTracker.Infrastructure\LeadTracker.Infrastructure.csproj" />
   </ItemGroup>
 
