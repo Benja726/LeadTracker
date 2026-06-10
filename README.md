@@ -1,6 +1,6 @@
 # LeadTracker
 
-Multi-tenant lead management dashboard for real estate agencies. Captures leads from WhatsApp, Instagram, and Facebook via an AI agent, and exposes them through a web dashboard.
+Multi-tenant lead management dashboard for real estate agencies. Captures leads from WhatsApp via an AI agent, and exposes them through a web dashboard.
 
 ## Stack
 
