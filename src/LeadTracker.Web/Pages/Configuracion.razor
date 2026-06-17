@@ -1,0 +1,146 @@
+@page "/configuracion"
+@inject ApiService Api
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Flujo.ai — Configuración</PageTitle>
+
+@if (_loading)
+{
+    <div class="loading-wrap"><div class="loading-spinner"></div></div>
+}
+else if (!_canManage)
+{
+    <header class="topbar">
+        <div>
+            <h1>Configuración</h1>
+            <p class="subtitle">Ajustes del negocio</p>
+        </div>
+    </header>
+    <div class="stats-view">
+        <div class="empty">No tenés permisos para administrar este negocio.</div>
+    </div>
+}
+else
+{
+    <header class="topbar">
+        <div>
+            <h1>Configuración</h1>
+            <p class="subtitle">Horario de atención del asistente</p>
+        </div>
+    </header>
+
+    <div class="stats-view">
+        <div class="settings-card">
+            <div class="settings-head">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div>
+                    <h3>Horario de respuesta</h3>
+                    <p>El asistente responde automáticamente dentro de esta franja horaria.</p>
+                </div>
+            </div>
+
+            <div class="settings-grid">
+                <label class="field">
+                    <span class="field-label">Desde</span>
+                    <input type="time" class="field-input" @bind="_start" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Hasta</span>
+                    <input type="time" class="field-input" @bind="_end" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Zona horaria</span>
+                    <select class="field-input" @bind="_tz">
+                        @foreach (var tz in _timezones)
+                        {
+                            <option value="@tz">@tz</option>
+                        }
+                    </select>
+                </label>
+            </div>
+
+            <div class="settings-foot">
+                <button class="save-btn" @onclick="SaveAsync" disabled="@_saving">
+                    @(_saving ? "Guardando…" : "Guardar cambios")
+                </button>
+                @if (_savedOk == true)
+                {
+                    <span class="save-msg ok">Guardado.</span>
+                }
+                else if (_savedOk == false)
+                {
+                    <span class="save-msg err">No se pudo guardar. Intentá de nuevo.</span>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _canManage;
+    private bool _saving;
+    private bool? _savedOk;
+
+    private TimeOnly _start = new(9, 0);
+    private TimeOnly _end = new(18, 0);
+    private string _tz = "America/Montevideo";
+
+    private List<string> _timezones = new()
+    {
+        "America/Montevideo",
+        "America/Argentina/Buenos_Aires",
+        "America/Santiago",
+        "America/Sao_Paulo",
+        "America/Asuncion",
+        "America/Bogota",
+        "America/Lima",
+        "America/Mexico_City",
+        "UTC",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsAuthenticatedAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await Api.GetBusinessesAsync();
+        var biz = Api.CurrentBusiness;
+        _canManage = biz?.CanManage ?? false;
+
+        if (biz is not null)
+        {
+            if (TimeOnly.TryParse(biz.AnswerStart, out var s)) _start = s;
+            if (TimeOnly.TryParse(biz.AnswerEnd, out var e))   _end = e;
+            if (!string.IsNullOrWhiteSpace(biz.AnswerTz))
+            {
+                _tz = biz.AnswerTz;
+                if (!_timezones.Contains(_tz)) _timezones.Insert(0, _tz);
+            }
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _savedOk = null;
+
+        // <input type="time"> → "HH:MM", which the set_business_hours RPC accepts.
+        var res = await Api.SetBusinessHoursAsync(_start.ToString("HH:mm"), _end.ToString("HH:mm"), _tz);
+
+        _saving = false;
+        _savedOk = res is not null;
+        if (res is not null)
+        {
+            if (TimeOnly.TryParse(res.AnswerStart, out var s)) _start = s;
+            if (TimeOnly.TryParse(res.AnswerEnd, out var e))   _end = e;
+            if (!string.IsNullOrWhiteSpace(res.AnswerTz))      _tz = res.AnswerTz;
+        }
+    }
+}

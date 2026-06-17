@@ -68,6 +68,37 @@ public class ApiService(HttpClient http, AuthService auth)
         }
     }
 
+    /// <summary>
+    /// Save the business answering hours via the role-gated set_business_hours RPC (server-side).
+    /// Returns the authoritative state on success and updates the cached business, or null on failure.
+    /// </summary>
+    public async Task<BusinessHoursDto?> SetBusinessHoursAsync(string start, string end, string tz)
+    {
+        var businesses = await GetBusinessesAsync();
+        var biz = businesses.FirstOrDefault();
+        if (biz is null) return null;
+
+        await SetAuthHeaderAsync();
+        try
+        {
+            var resp = await http.PostAsJsonAsync($"api/businesses/{biz.Id}/hours",
+                new { start, end, tz });
+            if (!resp.IsSuccessStatusCode) return null;
+            var dto = await resp.Content.ReadFromJsonAsync<BusinessHoursDto>();
+            if (dto is not null)
+            {
+                biz.AnswerStart = dto.AnswerStart;
+                biz.AnswerEnd = dto.AnswerEnd;
+                biz.AnswerTz = dto.AnswerTz;
+            }
+            return dto;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
     private async Task SetAuthHeaderAsync()
     {
         var token = await auth.GetTokenAsync();
@@ -142,7 +173,17 @@ public class ApiService(HttpClient http, AuthService auth)
     }
 }
 
-public record BusinessDto(Guid Id, string Name, string Slug, string Role);
+public record BusinessDto(Guid Id, string Name, string Slug, string Role)
+{
+    // Populated from the API by name; mutable so a successful hours save updates the cache in place.
+    public string? AnswerStart { get; set; }
+    public string? AnswerEnd { get; set; }
+    public string? AnswerTz { get; set; }
+
+    public bool CanManage => Role is "owner" or "admin";
+}
+
+public record BusinessHoursDto(string? AnswerStart, string? AnswerEnd, string? AnswerTz);
 
 public class LeadApiDto
 {

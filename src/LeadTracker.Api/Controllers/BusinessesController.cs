@@ -32,7 +32,11 @@ public sealed class BusinessesController(Client db, SupabaseOptions supabase) : 
                 m.Business!.Id,
                 m.Business.Name,
                 m.Business.Slug,
-                m.Role
+                m.Role,
+                // "HH:MM:SS" → "HH:MM" for <input type="time">.
+                AnswerStart = ShortTime(m.Business.AnswerStart),
+                AnswerEnd = ShortTime(m.Business.AnswerEnd),
+                m.Business.AnswerTz,
             });
 
         return Ok(businesses);
@@ -134,11 +138,61 @@ public sealed class BusinessesController(Client db, SupabaseOptions supabase) : 
         });
     }
 
+    // Set the business answering hours. Admin-level setting: gated to owner/admin here, and
+    // written via the tenancy-guarded set_business_hours RPC (caller's JWT), never a direct UPDATE.
+    [HttpPost("{businessId:guid}/hours")]
+    public async Task<IActionResult> SetBusinessHours(Guid businessId, [FromBody] BusinessHoursRequest req, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var membership = await db.Table<BusinessMembership>()
+            .Where(m => m.UserId == userId.Value && m.BusinessId == businessId)
+            .Get(ct);
+
+        var role = membership.Models.FirstOrDefault()?.Role;
+        if (role is null) return Forbid();
+        if (role is not ("owner" or "admin")) return Forbid();
+
+        var token = Request.Headers.Authorization.ToString().Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase).Trim();
+        var userClient = new Client(supabase.RestUrl, new ClientOptions());
+        userClient.GetHeaders = () => new Dictionary<string, string>
+        {
+            ["apikey"] = supabase.ServiceRoleKey!,
+            ["Authorization"] = $"Bearer {token}",
+        };
+
+        await userClient.Rpc("set_business_hours", new Dictionary<string, object?>
+        {
+            ["p_business_id"] = businessId,
+            ["p_start"] = req.Start,
+            ["p_end"] = req.End,
+            ["p_tz"] = req.Tz,
+        });
+
+        var biz = (await db.Table<Business>()
+            .Where(b => b.Id == businessId)
+            .Get(ct)).Models.FirstOrDefault();
+
+        return Ok(new
+        {
+            AnswerStart = ShortTime(biz?.AnswerStart),
+            AnswerEnd = ShortTime(biz?.AnswerEnd),
+            AnswerTz = biz?.AnswerTz,
+        });
+    }
+
     private Guid? GetUserId()
     {
         var raw = User.FindFirstValue("sub");
         return Guid.TryParse(raw, out var id) ? id : null;
     }
 
+    // PostgREST returns `time` as "HH:MM:SS"; the dashboard's <input type="time"> wants "HH:MM".
+    private static string? ShortTime(string? t) =>
+        string.IsNullOrEmpty(t) ? t : t.Length >= 5 ? t[..5] : t;
+
     public sealed record BotToggleRequest(string Phone, bool Enabled, string? Reason);
+
+    public sealed record BusinessHoursRequest(string Start, string End, string Tz);
 }
