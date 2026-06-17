@@ -35,11 +35,36 @@ public class ApiService(HttpClient http, AuthService auth)
         try
         {
             var raw = await http.GetFromJsonAsync<List<LeadApiDto>>($"api/businesses/{biz.Id}/leads") ?? [];
-            return raw.Select(Map).ToList();
+            // Float handoff-ready leads to the top; OrderBy is stable so recency order is kept within each bucket.
+            return raw.Select(Map).OrderByDescending(l => l.ReadyForHandoff).ToList();
         }
         catch (HttpRequestException)
         {
             return [];
+        }
+    }
+
+    /// <summary>
+    /// Toggle the bot for a conversation via the tenancy-guarded set_bot_enabled RPC (server-side).
+    /// Returns the authoritative state on success, or null on failure (so the caller can revert).
+    /// </summary>
+    public async Task<BotStateDto?> SetBotEnabledAsync(string phone, bool enabled, string reason = "manual")
+    {
+        var businesses = await GetBusinessesAsync();
+        var biz = businesses.FirstOrDefault();
+        if (biz is null) return null;
+
+        await SetAuthHeaderAsync();
+        try
+        {
+            var resp = await http.PostAsJsonAsync($"api/businesses/{biz.Id}/bot",
+                new { phone, enabled, reason });
+            if (!resp.IsSuccessStatusCode) return null;
+            return await resp.Content.ReadFromJsonAsync<BotStateDto>();
+        }
+        catch (HttpRequestException)
+        {
+            return null;
         }
     }
 
@@ -62,7 +87,13 @@ public class ApiService(HttpClient http, AuthService auth)
         var intent  = !string.IsNullOrWhiteSpace(d.Operation)
                     ? $"{d.Operation} {d.Zone}".Trim()
                     : d.LastMessage ?? "";
-        return new Lead(d.Id, d.Name, d.Phone, temp, intent, daysAgo, time, false, ParseHistory(d.Messages));
+        return new Lead(d.Id, d.Name, d.Phone, temp, intent, daysAgo, time, false, ParseHistory(d.Messages))
+        {
+            BotEnabled = d.BotEnabled,
+            BotDisabledReason = d.BotDisabledReason,
+            BotDisabledAt = d.BotDisabledAt,
+            ReadyForHandoff = d.ReadyForHandoff,
+        };
     }
 
     private static List<Message> ParseHistory(string? json)
@@ -128,4 +159,9 @@ public class LeadApiDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public string? Messages { get; set; }
+    public bool BotEnabled { get; set; } = true;
+    public string? BotDisabledReason { get; set; }
+    public DateTime? BotDisabledAt { get; set; }
 }
+
+public record BotStateDto(string Phone, bool BotEnabled, string? BotDisabledReason, DateTime? BotDisabledAt);

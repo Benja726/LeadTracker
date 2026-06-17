@@ -63,6 +63,10 @@ if (string.IsNullOrWhiteSpace(supabase.ServiceRoleKey))
     throw new InvalidOperationException(
         "Missing 'Supabase:ServiceRoleKey'. Set it via user-secrets / env vars.");
 
+// Make the bound options available to controllers (e.g. to build a user-JWT-scoped
+// PostgREST client for tenancy-guarded RPC writes like set_bot_enabled).
+builder.Services.AddSingleton(supabase);
+
 builder.Services.AddSingleton(_ =>
 {
     var client = new Supabase.Postgrest.Client(supabase.RestUrl, new Supabase.Postgrest.ClientOptions());

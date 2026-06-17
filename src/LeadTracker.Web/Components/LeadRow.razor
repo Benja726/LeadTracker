@@ -15,6 +15,25 @@
             <span class="lead-time">@RelTime(Lead.DaysAgo, Lead.Time)</span>
         </div>
         <div><span class="lead-intent">@Lead.Intent</span></div>
+        @if (Lead.ReadyForHandoff || !Lead.BotEnabled)
+        {
+            <div class="lead-badges">
+                @if (Lead.ReadyForHandoff)
+                {
+                    <span class="sbadge sbadge-handoff">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                        Listo para handoff
+                    </span>
+                }
+                @if (!Lead.BotEnabled)
+                {
+                    <span class="sbadge sbadge-human">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Atendido por humano
+                    </span>
+                }
+            </div>
+        }
         <div class="lead-line3">
             <span class="chan">
                 <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
