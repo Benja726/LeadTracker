@@ -1,15 +1,18 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using LeadTracker.Infrastructure.Data.Scaffolded;
+using LeadTracker.Infrastructure.Models;
+using Newtonsoft.Json;
+using Supabase.Postgrest;
+using static Supabase.Postgrest.Constants;
+using Client = Supabase.Postgrest.Client;
 
 namespace LeadTracker.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public sealed class BusinessesController(LeadTrackerDbContext db) : ControllerBase
+public sealed class BusinessesController(Client db) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetBusinesses(CancellationToken ct)
@@ -17,16 +20,19 @@ public sealed class BusinessesController(LeadTrackerDbContext db) : ControllerBa
         var userId = GetUserId();
         if (userId is null) return Unauthorized();
 
-        var businesses = await db.BusinessMemberships
-            .Where(m => m.UserId == userId)
+        var memberships = await db.Table<BusinessMembership>()
+            .Where(m => m.UserId == userId.Value)
+            .Get(ct);
+
+        var businesses = memberships.Models
+            .Where(m => m.Business is not null)
             .Select(m => new
             {
-                m.Business.Id,
+                m.Business!.Id,
                 m.Business.Name,
                 m.Business.Slug,
                 m.Role
-            })
-            .ToListAsync(ct);
+            });
 
         return Ok(businesses);
     }
@@ -37,33 +43,36 @@ public sealed class BusinessesController(LeadTrackerDbContext db) : ControllerBa
         var userId = GetUserId();
         if (userId is null) return Unauthorized();
 
-        var isMember = await db.BusinessMemberships
-            .AnyAsync(m => m.UserId == userId && m.BusinessId == businessId, ct);
+        // Tenancy guard: caller must belong to the requested business.
+        var membership = await db.Table<BusinessMembership>()
+            .Where(m => m.UserId == userId.Value && m.BusinessId == businessId)
+            .Get(ct);
 
-        if (!isMember) return Forbid();
+        if (membership.Models.Count == 0) return Forbid();
 
-        var leads = await db.Leads
+        var leads = await db.Table<Lead>()
             .Where(l => l.BusinessId == businessId)
-            .OrderByDescending(l => l.UpdatedAt)
-            .Select(l => new
-            {
-                l.Id,
-                Name = l.Name ?? l.ProfileName ?? l.Phone,
-                l.Phone,
-                Temp = l.Classification,
-                l.Operation,
-                l.Zone,
-                l.Budget,
-                l.ReadyForHandoff,
-                l.HandoffDone,
-                l.LastMessage,
-                l.CreatedAt,
-                l.UpdatedAt,
-                Messages = l.Conversation != null ? l.Conversation.History : "[]"
-            })
-            .ToListAsync(ct);
+            .Order(l => l.UpdatedAt, Ordering.Descending)
+            .Get(ct);
 
-        return Ok(leads);
+        var result = leads.Models.Select(l => new
+        {
+            l.Id,
+            Name = l.Name ?? l.ProfileName ?? l.Phone,
+            l.Phone,
+            Temp = l.Classification,
+            l.Operation,
+            l.Zone,
+            l.Budget,
+            l.ReadyForHandoff,
+            l.HandoffDone,
+            l.LastMessage,
+            l.CreatedAt,
+            l.UpdatedAt,
+            Messages = l.Conversation?.History?.ToString(Formatting.None) ?? "[]"
+        });
+
+        return Ok(result);
     }
 
     private Guid? GetUserId()

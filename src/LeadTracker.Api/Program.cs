@@ -1,11 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using LeadTracker.Api.Auth;
-using LeadTracker.Infrastructure.Data.Scaffolded;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,8 +56,23 @@ builder.Services
         }
     });
 
-builder.Services.AddDbContext<LeadTrackerDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Supabase")));
+// ---- Data layer: PostgREST over HTTPS with the service-role key ----
+// No direct Postgres connection. Tenant scoping is enforced in the controllers (C#),
+// same posture as the old Option A; RLS in Supabase is only a backstop.
+if (string.IsNullOrWhiteSpace(supabase.ServiceRoleKey))
+    throw new InvalidOperationException(
+        "Missing 'Supabase:ServiceRoleKey'. Set it via user-secrets / env vars.");
+
+builder.Services.AddSingleton(_ =>
+{
+    var client = new Supabase.Postgrest.Client(supabase.RestUrl, new Supabase.Postgrest.ClientOptions());
+    client.GetHeaders = () => new Dictionary<string, string>
+    {
+        ["apikey"] = supabase.ServiceRoleKey!,
+        ["Authorization"] = $"Bearer {supabase.ServiceRoleKey}",
+    };
+    return client;
+});
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();

@@ -1,47 +1,40 @@
-using System.Net.Http.Json;
-using System.Text.Json;
-using Microsoft.JSInterop;
+using Supabase.Gotrue;
+using Supabase.Gotrue.Exceptions;
 
 namespace LeadTracker.Web.Services;
 
-public class AuthService(HttpClient http, IJSRuntime js, IConfiguration config)
+/// <summary>
+/// Thin wrapper over the GoTrue client. The SDK owns the session: it persists it to
+/// localStorage and auto-refreshes the access token in the background, so the user stays
+/// logged in until they explicitly sign out (no more "401 after ~1h" from a dropped
+/// refresh token).
+/// </summary>
+public class AuthService(Client client)
 {
-    private const string StorageKey = "sb_token";
-    private string? _token;
-
     public async Task<bool> SignInAsync(string email, string password)
     {
-        var supabaseUrl = config["Supabase:Url"] ?? throw new InvalidOperationException("Supabase:Url not configured");
-        var anonKey = config["Supabase:AnonKey"] ?? throw new InvalidOperationException("Supabase:AnonKey not configured");
-
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"{supabaseUrl}/auth/v1/token?grant_type=password");
-        req.Headers.Add("apikey", anonKey);
-        req.Content = JsonContent.Create(new { email, password });
-
-        using var resp = await http.SendAsync(req);
-        if (!resp.IsSuccessStatusCode) return false;
-
-        var doc = await resp.Content.ReadFromJsonAsync<JsonDocument>();
-        _token = doc!.RootElement.GetProperty("access_token").GetString();
-        if (_token is null) return false;
-
-        await js.InvokeVoidAsync("localStorage.setItem", StorageKey, _token);
-        return true;
+        try
+        {
+            var session = await client.SignInWithPassword(email, password);
+            return session is not null;
+        }
+        catch (GotrueException)
+        {
+            // Bad credentials / unconfirmed user etc. — surface as a normal login failure
+            // instead of an unhandled render exception.
+            return false;
+        }
     }
 
-    public async Task<string?> GetTokenAsync()
+    // The SDK refreshes CurrentSession in the background; this hands ApiService a live token.
+    public Task<string?> GetTokenAsync()
+        => Task.FromResult(client.CurrentSession?.AccessToken);
+
+    public Task<bool> IsAuthenticatedAsync()
     {
-        if (_token is null)
-            _token = await js.InvokeAsync<string?>("localStorage.getItem", StorageKey);
-        return _token;
+        var session = client.CurrentSession;
+        return Task.FromResult(session is not null && !session.Expired());
     }
 
-    public async Task<bool> IsAuthenticatedAsync()
-        => !string.IsNullOrEmpty(await GetTokenAsync());
-
-    public async Task SignOutAsync()
-    {
-        _token = null;
-        await js.InvokeVoidAsync("localStorage.removeItem", StorageKey);
-    }
+    public Task SignOutAsync() => client.SignOut();
 }

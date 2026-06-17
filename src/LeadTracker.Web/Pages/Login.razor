@@ -10,11 +10,11 @@
 
         <div class="login-field">
             <label>Email</label>
-            <input type="email" @bind="_email" placeholder="tu@email.com" />
+            <input type="email" @bind="_email" @bind:event="oninput" placeholder="tu@email.com" />
         </div>
         <div class="login-field">
             <label>Contraseña</label>
-            <input type="password" @bind="_password" @onkeydown="OnKeyDown" />
+            <input type="password" @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown" />
         </div>
 
         @if (_error is not null)
