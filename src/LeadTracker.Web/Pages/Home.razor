@@ -7,7 +7,7 @@
 
 @if (_loading)
 {
-    <div class="loading-wrap"><div class="loading-spinner"></div></div>
+    <div class="loading-wrap"><div class="spinner-border text-primary"></div></div>
 }
 else
 {
@@ -23,30 +23,32 @@ else
     </header>
 
     <div class="leads-view">
-        <div class="filters">
-            <div class="search">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <input placeholder="Buscar por nombre o consulta…" @bind="_query" @bind:event="oninput" />
+        <div class="d-flex flex-wrap align-items-center gap-3 px-4 py-3">
+            <div class="input-group flex-grow-1" style="min-width:220px;max-width:420px">
+                <span class="input-group-text bg-body border-end-0 text-muted">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </span>
+                <input class="form-control border-start-0 ps-1" placeholder="Buscar por nombre o consulta…" @bind="_query" @bind:event="oninput" />
             </div>
 
-            <div class="seg">
+            <div class="btn-group" role="group">
                 @foreach (var (label, value) in new[] { ("Todos","todos"), ("Nuevos hoy","hoy"), ("Históricos","historicos") })
                 {
-                    <button class="@(_filterTime == value ? "on" : "")" @onclick="() => _filterTime = value">@label</button>
+                    <button class="btn btn-sm @(_filterTime == value ? "btn-primary" : "btn-outline-secondary")" @onclick="() => _filterTime = value">@label</button>
                 }
             </div>
 
-            <div class="pills">
+            <div class="btn-group" role="group">
                 @foreach (var (label, value, color) in new[] {
                     ("Todos",     "todos",     ""),
-                    ("Caliente",  "caliente",  "#BB5048"),
-                    ("Tibio",     "tibio",     "#B98631"),
-                    ("Frío",      "frio",      "#5B86B0") })
+                    ("Caliente",  "caliente",  "#B91C1C"),
+                    ("Tibio",     "tibio",     "#B45309"),
+                    ("Frío",      "frio",      "#2563EB") })
                 {
-                    <button class="pill @(_filterTemp == value ? $"on-{value}" : "")" @onclick="() => _filterTemp = value">
+                    <button class="btn btn-sm @(_filterTemp == value ? "btn-primary" : "btn-outline-secondary")" @onclick="() => _filterTemp = value">
                         @if (value != "todos")
                         {
-                            <span class="pill-dot" style="background:@color"></span>
+                            <span class="d-inline-block rounded-circle me-1" style="width:7px;height:7px;background:@color"></span>
                         }
                         @label
                     </button>

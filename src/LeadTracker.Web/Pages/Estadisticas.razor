@@ -7,80 +7,148 @@
 
 @if (_loading)
 {
-    <div class="loading-wrap"><div class="loading-spinner"></div></div>
+    <div class="loading-wrap"><div class="spinner-border text-primary"></div></div>
 }
 else
 {
     <header class="topbar">
         <div>
             <h1>Estadísticas</h1>
-            <p class="subtitle">Resumen de captación de leads</p>
+            <p class="subtitle">Resultados de Vera</p>
         </div>
-        <div class="date-chip">
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Hoy, @DateTime.Now.ToString("d 'de' MMMM", new System.Globalization.CultureInfo("es-UY"))
+        <div class="btn-group" role="group">
+            <button class="btn btn-sm @(_allTime ? "btn-outline-secondary" : "btn-primary")" @onclick="() => SetRangeAsync(false)">Últimos 30 días</button>
+            <button class="btn btn-sm @(_allTime ? "btn-primary" : "btn-outline-secondary")" @onclick="() => SetRangeAsync(true)">Histórico</button>
         </div>
     </header>
 
     <div class="stats-view">
-        <div class="stat-grid">
-            <StatCard Label="Leads nuevos hoy" Value="@_hoy" Icon="inbox" AccentColor="var(--brand)" Delta="+2" Sub="vs. ayer" />
-            <StatCard Label="Esta semana"       Value="@_semana" Icon="bar-chart" AccentColor="var(--frio)" Sub="últimos 7 días" />
-            <StatCard Label="Este mes"          Value="@_mes"    Icon="trending-up" AccentColor="var(--tibio)" Sub="últimos 30 días" />
-            <StatCard Label="Leads calientes"   Value="@_caliente" Icon="flame" AccentColor="var(--caliente)" Sub="@($"{_calientePct}% del total")" />
+        @{ var s = _stats ?? new DashboardStats(); }
+
+        <div class="card hover-lift mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-baseline mb-4">
+                    <h3 class="font-serif fw-semibold fs-5 mb-0">Embudo de resultados</h3>
+                    <span class="text-muted small text-uppercase fw-semibold">@s.Total leads captados</span>
+                </div>
+                @{ int funnelMax = Math.Max(s.Total, 1); }
+                @foreach (var (label, count, color) in new[] {
+                    ("Leads calificados", s.Calificados, "var(--tibio)"),
+                    ("Listos para el asesor", s.Prontos, "var(--caliente)") })
+                {
+                    var pct = s.Total > 0 ? count * 100 / s.Total : 0;
+                    var width = Math.Max(count * 100 / funnelMax, count > 0 ? 6 : 0);
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="fw-semibold" style="width:170px">@label</div>
+                        <div class="progress flex-grow-1" style="height:34px;border-radius:var(--r-sm)">
+                            <div class="progress-bar"
+                                 style="width:@(width)%;background-color:@color;border-radius:var(--r-sm)"></div>
+                        </div>
+                        <div class="font-mono text-secondary small text-nowrap text-end" style="width:64px">@count · @pct%</div>
+                    </div>
+                }
+            </div>
         </div>
 
-        <div class="panels-2">
-            <div class="big-panel">
-                <div class="bp-head">
-                    <h3>Leads nuevos · últimos 14 días</h3>
-                    <span class="bp-total">@_days.Sum(d => d.Count) en total</span>
-                </div>
-                <div class="bars">
-                    @{ int maxVal = Math.Max(_days.Max(d => d.Count), 1); }
-                    @foreach (var day in _days)
-                    {
-                        <div class="bar-col">
-                            <div class="bar-wrap">
-                                @if (day.Count > 0)
-                                {
-                                    <div class="bar-val">@day.Count</div>
-                                }
-                                <div class="bar" style="height:@(day.Count * 100 / maxVal)%; opacity:@(day.DaysAgo == 0 ? "1" : "0.78")"></div>
-                            </div>
-                            <div class="bar-lbl @(day.DaysAgo == 0 ? "today" : "")">@(day.DaysAgo == 0 ? "Hoy" : day.Label)</div>
+        <div class="row g-4 mb-4">
+            <div class="col-lg-7">
+                <div class="card hover-lift h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-baseline mb-4">
+                            <h3 class="font-serif fw-semibold fs-5 mb-0">Por temperatura</h3>
+                            <span class="text-muted small text-uppercase fw-semibold">@s.Total leads</span>
                         </div>
-                    }
+                        @foreach (var (count, color, label) in new[] {
+                            (s.Caliente, "var(--caliente)", "Caliente"),
+                            (s.Tibio,    "var(--tibio)",    "Tibio"),
+                            (s.Frio,     "var(--frio)",     "Frío") })
+                        {
+                            var pct = s.Total > 0 ? count * 100 / s.Total : 0;
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="fw-semibold" style="width:84px;color:@color">@label</div>
+                                <div class="progress flex-grow-1" style="height:11px">
+                                    <div class="progress-bar" style="width:@pct%;background-color:@color"></div>
+                                </div>
+                                <div class="font-mono text-secondary small text-nowrap">@count · @pct%</div>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
 
-            <div class="big-panel">
-                <div class="bp-head">
-                    <h3>Por temperatura</h3>
-                    <span class="bp-total">@_all.Count leads</span>
-                </div>
-                <div class="dist">
-                    @foreach (var (temp, color, label) in new[] {
-                        (Temperatura.Caliente, "var(--caliente)", "Caliente"),
-                        (Temperatura.Tibio,    "var(--tibio)",    "Tibio"),
-                        (Temperatura.Frio,     "var(--frio)",     "Frío") })
-                    {
-                        var count = _all.Count(l => l.Temp == temp);
-                        var pct = _all.Count > 0 ? count * 100 / _all.Count : 0;
-                        <div class="dist-row">
-                            <div class="dist-lbl" style="color:@color">@label</div>
-                            <div class="dist-track">
-                                <div class="dist-fill" style="width:@pct%;background:@color"></div>
-                            </div>
-                            <div class="dist-num">@count · @pct%</div>
+            <div class="col-lg-5">
+                <div class="card hover-lift h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-baseline mb-4">
+                            <h3 class="font-serif fw-semibold fs-5 mb-0">Demanda por zona</h3>
+                            <span class="text-muted small text-uppercase fw-semibold">top @s.PorZona.Count</span>
                         </div>
-                    }
+                        @if (s.PorZona.Count == 0)
+                        {
+                            <p class="text-muted small mb-0">Sin datos de zona todavía.</p>
+                        }
+                        else
+                        {
+                            int zonaMax = Math.Max(s.PorZona.Max(z => z.N), 1);
+                            @foreach (var z in s.PorZona)
+                            {
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="fw-semibold text-truncate" style="width:96px" title="@z.Zona">@z.Zona</div>
+                                    <div class="progress flex-grow-1" style="height:11px">
+                                        <div class="progress-bar" style="width:@(z.N * 100 / zonaMax)%;background-color:var(--brand)"></div>
+                                    </div>
+                                    <div class="font-mono text-secondary small">@z.N</div>
+                                </div>
+                            }
+                        }
+                    </div>
                 </div>
-                <div class="conv-box">
-                    <div class="conv-pct">@_calientePct%</div>
-                    <div class="conv-txt">
-                        tasa de leads calientes<br />
-                        <span>derivados a un asesor 🔥</span>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="card hover-lift h-100">
+                    <div class="card-body">
+                        <h3 class="font-serif fw-semibold fs-5 mb-3">Leads fuera de horario</h3>
+                        <div class="d-flex align-items-center gap-3 p-3"
+                             style="background:var(--frio-soft);border:1px solid rgba(37,99,235,0.22);border-radius:var(--r-md)">
+                            <div class="font-serif fw-semibold text-center" style="font-size:42px;line-height:1;color:var(--frio);min-width:52px">@s.FueraHorario</div>
+                            <div>
+                                <div class="fw-semibold">Leads rescatados</div>
+                                <div class="text-muted small">Vera los atendió cuando no había nadie del equipo disponible</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card hover-lift h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-baseline mb-4">
+                            <h3 class="font-serif fw-semibold fs-5 mb-0">Operación</h3>
+                            <span class="text-muted small text-uppercase fw-semibold">@s.PorOperacion.Sum(o => o.N) leads</span>
+                        </div>
+                        @if (s.PorOperacion.Count == 0)
+                        {
+                            <p class="text-muted small mb-0">Sin datos de operación todavía.</p>
+                        }
+                        else
+                        {
+                            int opTotal = Math.Max(s.PorOperacion.Sum(o => o.N), 1);
+                            @foreach (var o in s.PorOperacion)
+                            {
+                                var pct = o.N * 100 / opTotal;
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="fw-semibold text-truncate" style="width:96px" title="@o.Operacion">@o.Operacion</div>
+                                    <div class="progress flex-grow-1" style="height:11px">
+                                        <div class="progress-bar" style="width:@pct%;background-color:var(--green)"></div>
+                                    </div>
+                                    <div class="font-mono text-secondary small text-nowrap">@o.N · @pct%</div>
+                                </div>
+                            }
+                        }
                     </div>
                 </div>
             </div>
@@ -89,9 +157,8 @@ else
 }
 
 @code {
-    private List<Lead> _all = [];
-    private int _hoy, _semana, _mes, _caliente, _calientePct;
-    private List<DayBar> _days = [];
+    private DashboardStats? _stats;
+    private bool _allTime;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -101,24 +168,20 @@ else
             Nav.NavigateTo("/login");
             return;
         }
-
-        _all      = await DataService.GetLeadsAsync();
-        _hoy      = _all.Count(l => l.DaysAgo == 0);
-        _semana   = _all.Count(l => l.DaysAgo < 7);
-        _mes      = _all.Count(l => l.DaysAgo < 30);
-        _caliente = _all.Count(l => l.Temp == Temperatura.Caliente);
-        _calientePct = _all.Count > 0 ? _caliente * 100 / _all.Count : 0;
-
-        var wd = new[] { "D", "L", "M", "M", "J", "V", "S" };
-        _days = Enumerable.Range(0, 14).Select(i =>
-        {
-            var daysAgo = 13 - i;
-            var dt = DateTime.Now.AddDays(-daysAgo);
-            return new DayBar(daysAgo, wd[(int)dt.DayOfWeek], _all.Count(l => l.DaysAgo == daysAgo));
-        }).ToList();
-
+        await LoadAsync();
         _loading = false;
     }
 
-    private record DayBar(int DaysAgo, string Label, int Count);
+    private async Task SetRangeAsync(bool allTime)
+    {
+        if (_allTime == allTime) return;
+        _allTime = allTime;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var from = _allTime ? (DateTimeOffset?)null : DateTimeOffset.UtcNow.AddDays(-30);
+        _stats = await DataService.GetDashboardStatsAsync(from);
+    }
 }

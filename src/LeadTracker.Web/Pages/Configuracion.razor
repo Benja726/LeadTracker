@@ -7,7 +7,7 @@
 
 @if (_loading)
 {
-    <div class="loading-wrap"><div class="loading-spinner"></div></div>
+    <div class="loading-wrap"><div class="spinner-border text-primary"></div></div>
 }
 else if (!_canManage)
 {
@@ -31,47 +31,53 @@ else
     </header>
 
     <div class="stats-view">
-        <div class="settings-card">
-            <div class="settings-head">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <div>
-                    <h3>Horario de respuesta</h3>
-                    <p>El asistente responde automáticamente dentro de esta franja horaria.</p>
+        <div class="card hover-lift" style="max-width:640px">
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3 pb-3 mb-3 border-bottom">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" class="mt-1" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <div>
+                        <h3 class="font-serif fw-semibold fs-5 mb-1">Horario de respuesta</h3>
+                        <p class="text-secondary small mb-0">El asistente responde automáticamente dentro de esta franja horaria.</p>
+                    </div>
                 </div>
-            </div>
 
-            <div class="settings-grid">
-                <label class="field">
-                    <span class="field-label">Desde</span>
-                    <input type="time" class="field-input" @bind="_start" />
-                </label>
-                <label class="field">
-                    <span class="field-label">Hasta</span>
-                    <input type="time" class="field-input" @bind="_end" />
-                </label>
-                <label class="field">
-                    <span class="field-label">Zona horaria</span>
-                    <select class="field-input" @bind="_tz">
-                        @foreach (var tz in _timezones)
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">Desde</label>
+                        <input type="time" class="form-control" @bind="_start" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">Hasta</label>
+                        <input type="time" class="form-control" @bind="_end" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Zona horaria</label>
+                        <select class="form-select" @bind="_tz">
+                            @foreach (var tz in _timezones)
+                            {
+                                <option value="@tz">@tz</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 mt-4">
+                    <button class="btn btn-primary fw-semibold" @onclick="SaveAsync" disabled="@_saving">
+                        @if (_saving)
                         {
-                            <option value="@tz">@tz</option>
+                            <span class="spinner-border spinner-border-sm me-2"></span>
                         }
-                    </select>
-                </label>
-            </div>
-
-            <div class="settings-foot">
-                <button class="save-btn" @onclick="SaveAsync" disabled="@_saving">
-                    @(_saving ? "Guardando…" : "Guardar cambios")
-                </button>
-                @if (_savedOk == true)
-                {
-                    <span class="save-msg ok">Guardado.</span>
-                }
-                else if (_savedOk == false)
-                {
-                    <span class="save-msg err">No se pudo guardar. Intentá de nuevo.</span>
-                }
+                        @(_saving ? "Guardando…" : "Guardar cambios")
+                    </button>
+                    @if (_savedOk == true)
+                    {
+                        <span class="text-success small fw-semibold">Guardado.</span>
+                    }
+                    else if (_savedOk == false)
+                    {
+                        <span class="text-danger small fw-semibold">No se pudo guardar. Intentá de nuevo.</span>
+                    }
+                </div>
             </div>
         </div>
     </div>

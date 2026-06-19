@@ -182,6 +182,41 @@ public sealed class BusinessesController(Client db, SupabaseOptions supabase) : 
         });
     }
 
+    // Results-funnel stats for the dashboard. Everything comes from the single dashboard_stats
+    // RPC (jsonb), which scopes to business_id and checks membership against auth.uid() — so it
+    // runs with the *caller's* JWT, same posture as the bot/hours RPCs. We pass the jsonb through
+    // untouched. p_from/p_to are optional (null = all-time).
+    [HttpGet("{businessId:guid}/stats")]
+    public async Task<IActionResult> GetStats(Guid businessId, [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        // Tenancy guard: clean 403 before hitting the RPC (same posture as GetLeads).
+        var membership = await db.Table<BusinessMembership>()
+            .Where(m => m.UserId == userId.Value && m.BusinessId == businessId)
+            .Get(ct);
+
+        if (membership.Models.Count == 0) return Forbid();
+
+        var token = Request.Headers.Authorization.ToString().Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase).Trim();
+        var userClient = new Client(supabase.RestUrl, new ClientOptions());
+        userClient.GetHeaders = () => new Dictionary<string, string>
+        {
+            ["apikey"] = supabase.ServiceRoleKey!,
+            ["Authorization"] = $"Bearer {token}",
+        };
+
+        var resp = await userClient.Rpc("dashboard_stats", new Dictionary<string, object?>
+        {
+            ["p_business_id"] = businessId,
+            ["p_from"] = from,
+            ["p_to"] = to,
+        });
+
+        return Content(resp.Content ?? "{}", "application/json");
+    }
+
     private Guid? GetUserId()
     {
         var raw = User.FindFirstValue("sub");

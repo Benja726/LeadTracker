@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using LeadTracker.Web.Models;
 
 namespace LeadTracker.Web.Services;
@@ -92,6 +93,31 @@ public class ApiService(HttpClient http, AuthService auth)
                 biz.AnswerTz = dto.AnswerTz;
             }
             return dto;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Whole stats page in one server call: the dashboard_stats RPC (funnel + temperatura + zona
+    /// + fuera-horario). Pass from=null for all-time. Returns null on failure.
+    /// </summary>
+    public async Task<DashboardStats?> GetDashboardStatsAsync(DateTimeOffset? from, DateTimeOffset? to = null)
+    {
+        var businesses = await GetBusinessesAsync();
+        var biz = businesses.FirstOrDefault();
+        if (biz is null) return null;
+
+        await SetAuthHeaderAsync();
+        try
+        {
+            var qs = new List<string>();
+            if (from.HasValue) qs.Add($"from={Uri.EscapeDataString(from.Value.ToString("o"))}");
+            if (to.HasValue)   qs.Add($"to={Uri.EscapeDataString(to.Value.ToString("o"))}");
+            var url = $"api/businesses/{biz.Id}/stats" + (qs.Count > 0 ? "?" + string.Join("&", qs) : "");
+            return await http.GetFromJsonAsync<DashboardStats>(url);
         }
         catch (HttpRequestException)
         {
@@ -206,3 +232,29 @@ public class LeadApiDto
 }
 
 public record BotStateDto(string Phone, bool BotEnabled, string? BotDisabledReason, DateTime? BotDisabledAt);
+
+// Payload of the dashboard_stats RPC (snake_case jsonb keys → mapped here).
+public class DashboardStats
+{
+    public int Total { get; set; }
+    public int Calificados { get; set; }
+    public int Prontos { get; set; }
+    public int Caliente { get; set; }
+    public int Tibio { get; set; }
+    public int Frio { get; set; }
+    [JsonPropertyName("fuera_horario")] public int FueraHorario { get; set; }
+    [JsonPropertyName("por_zona")] public List<ZonaStat> PorZona { get; set; } = [];
+    [JsonPropertyName("por_operacion")] public List<OperacionStat> PorOperacion { get; set; } = [];
+}
+
+public class ZonaStat
+{
+    public string Zona { get; set; } = "";
+    public int N { get; set; }
+}
+
+public class OperacionStat
+{
+    public string Operacion { get; set; } = "";
+    public int N { get; set; }
+}

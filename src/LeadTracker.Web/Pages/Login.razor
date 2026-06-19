@@ -3,28 +3,34 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 
-<div class="login-wrap">
-    <div class="login-card">
-        <div class="login-logo">Flujo<span>.ai</span></div>
-        <div class="login-sub">Iniciá sesión para continuar</div>
+<div class="min-vh-100 d-flex align-items-center justify-content-center p-3" style="background:var(--bg)">
+    <div class="card border" style="width:380px;max-width:100%">
+        <div class="card-body p-4 p-sm-5">
+            <div class="font-serif fw-bold fs-3">Flujo<span class="text-brand">.ai</span></div>
+            <p class="text-secondary small mb-4">Iniciá sesión para continuar</p>
 
-        <div class="login-field">
-            <label>Email</label>
-            <input type="email" @bind="_email" @bind:event="oninput" placeholder="tu@email.com" />
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Email</label>
+                <input type="email" class="form-control" @bind="_email" @bind:event="oninput" placeholder="tu@email.com" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Contraseña</label>
+                <input type="password" class="form-control" @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown" />
+            </div>
+
+            @if (_error is not null)
+            {
+                <div class="alert alert-danger py-2 px-3 small mb-3">@_error</div>
+            }
+
+            <button class="btn btn-primary w-100 fw-semibold" @onclick="LoginAsync" disabled="@_loading">
+                @if (_loading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                @(_loading ? "Entrando…" : "Iniciar sesión")
+            </button>
         </div>
-        <div class="login-field">
-            <label>Contraseña</label>
-            <input type="password" @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown" />
-        </div>
-
-        @if (_error is not null)
-        {
-            <div class="login-error">@_error</div>
-        }
-
-        <button class="login-btn" @onclick="LoginAsync" disabled="@_loading">
-            @(_loading ? "Entrando…" : "Iniciar sesión")
-        </button>
     </div>
 </div>
 
